@@ -1,0 +1,231 @@
+---
+title: "Lab 1"
+author: "Karan K Patel, Jane Lai, Maxwell Bowman" 
+subtitle: "\\url{https://github.com/mids-w203/lab-1-team-no-l-s/tree/project}"
+date: today 
+date-format: long
+format: 
+  pdf: 
+    documentclass: scrreprt
+    classoption: onecolumn
+editor: visual
+---
+
+## Importance and Context
+
+Education has consistently been a key issue in presidential campaigns, with Republican and Democratic candidates addressing topics such as school curricula, library book policies, and the role of federal, state, and local governments in shaping primary and secondary education. Public opinion on these issues often varies, sometimes diverging from official guidelines or legislation. Given these dynamics, this analysis seeks to answer the following research question:
+
+**“Do Democratic and Republican voters have different views on primary and secondary schooling?”**
+
+In a country where states and counties have the autonomy to design their own curricula, our understanding of Democratic and Republican voters’ views of primary and secondary schooling could add nuance and valuable information to local-level voter analyses between the two parties.
+
+As the two largest political groups in the country, Democratic and Republican voters play a crucial role in shaping both national and local education debates. Given that primary and secondary schooling helps shape the beliefs and perspectives of future generations, analyzing the relationship between political affiliation and education policy preferences is essential for assessing and predicting the long-term societal impact of education.
+
+## Data and Methodology
+
+For our study we have used the ANES 2024 Pilot Study, it includes responses from a sample of U.S. adults (Age 18 or older), collected online, covering topics related to political attitudes, voting behavior, and public opinion. It includes 1,500 weighted cases, representing the population, and an additional 409 unweighted cases not intended for population inference. The data collection was performed by YouGov.
+
+For this study, we aim to investigate whether Democratic and Republican voters have different views on primary and secondary schooling. To focus on voters, we first filtered respondents based on their eligibility to vote in the 2024 presidential election. We considered a respondent a voter if they self-reported being registered, as indicated by the **votereg** variable.
+
+Since self-reported data can be prone to inaccuracies, we further refined our sample by considering whether respondents actually voted in the 2020 presidential election. To minimize social desirability bias, we used two variables: **voteturn_saveface** and **voteturn_lookup**, which capture respondents who self-reported they "Definitely voted" or "I voted," respectively. By filtering for individuals who are both registered (**votereg**) and self-report that they voted, we aimed to capture actual voters, rather than just those who are eligible but may not participate. This filtering process resulted in a final sample of 1,115 observations, excluding 794 respondents.
+
+Given the focus on Democratic and Republican voters, we elected to not utilize the **pid3** variable which allowed voters the option to not identify with a party entirely. Similarly, **rpid7** allowed voters to identify as Independents "leaning" towards Democrat or Republican. For this reason, we utilized the **pid7** variable, a 7-point party identification scale, used to classify voters. Respondents who identified as "Lean Democrat," "Not very strong Democrat," or "Strong Democrat" were grouped as Democratic voters, while those identifying as "Lean Republican," "Not very strong Republican," or "Strong Republican" were grouped as Republican voters.
+
+**Key Variables:**
+
+1.  group_colprofs: This variable gauges respondents' feelings toward college professors on a scale from 0 to 100. It was selected to assess partisan differences in attitudes toward higher education, helping us understand how political affiliation may influence views on the role of college professors in education.
+
+2.  own_schteach: This variable indicates which political party respondents believe would do a better job handling what is taught in public schools. It is a nominal categorical variable with the following values: 'No Answer', 'Inapplicable, legitimate skip', 'Democrats', 'Republicans', and 'No difference'. It directly addresses the study's focus on the influence of political party affiliation on views of primary and secondary education.
+
+**Methodology:**
+
+To examine whether Democratic and Republican voters hold differing perspectives on primary and secondary education, we analyzed survey responses from Democratic and Republican voters to the following questions:
+
+**1. Which Political Party Would Best Handle Public Schooling?**
+
+-   **Null Hypothesis (H~0~)**: There is no association between political identity (Democrat vs. Republican respondents) and their preference for which party would better handle public schooling. Mathematically:
+
+    P(Preference\|Democrat) = P(Preference\|Republican)
+
+-   **Alternative Hypothesis (H**~a~**)**: There is an association between political identity and their preference for which party would better handle public schooling.
+
+    P(Preference\|Democrat) != P(Preference\|Republican)
+
+```{r Data Preparation 2, include=FALSE, echo=FALSE}
+ds <- read.csv("~/lab-1-team-no-l-s/data/modelling/democrats_republican_cmbnd.csv")
+
+ds$own_schteach <- factor(ds$own_schteach, 
+                            levels = 
+                              c("Democrats", 
+                                "Republicans", 
+                                "No difference",
+                                "inapplicable, legitimate skip"))
+
+ds$party_group <- factor(ds$party_group, 
+                         levels = 
+                           c("Democrat", 
+                             "Republican"))
+
+contingency_table <- table(ds$party_group, ds$own_schteach)
+```
+
+```{r, echo=FALSE, fig.width = 5, fig.height=3}
+library(ggplot2)
+library(scales)
+
+ds_filtered <- subset(ds, own_schteach != "inapplicable, legitimate skip")
+
+# Plot
+ggplot(ds_filtered, aes(x = party_group, fill = own_schteach)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    x = "Party Affiliation",
+    y = "Proportion of Responses",
+    title = "Which Party is Perceived to Handle\nPublic School Curriculum Better?",
+    fill = "Preferred Party"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Democrats" = "#4575b4",
+      "Republicans" = "#d73027",
+      "No difference" = "#aaaaaa"
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 11),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.title = element_text(face = "bold")
+  )
+
+```
+
+```{r, echo=FALSE}
+# filter out the "inapplicable, legitimate skip" values and add totals row/column
+filtered_ds <- subset(ds, own_schteach != "inapplicable, legitimate skip")
+filtered_ds$own_schteach <- droplevels(filtered_ds$own_schteach)
+filtered_table <- table(filtered_ds$party_group, filtered_ds$own_schteach)
+
+totals_row <- apply(filtered_table, 1, sum)
+totals_column <- apply(filtered_table, 2, sum)
+filtered_table_with_totals <- rbind(filtered_table, Totals = totals_column)
+filtered_table_with_totals <- cbind(filtered_table_with_totals, Totals = c(totals_row, sum(totals_row)))
+
+print(filtered_table_with_totals)
+```
+
+When comparing the preferences of Democrat and Republican respondents regarding which party would better handle public schooling, there is a noticeable trend in the distribution of choices. We will perform the Chi-square test of independence to assess the association between political identity and party preference. If the p-value is less than 0.05, we reject the null hypothesis, meaning there is an association between political identity and party preference.
+
+Although the Chi-square test of independence assumptions are mostly satisfied, there are a few considerations about the sample that need to be addressed. The ANES 2024 Pilot Study does not fully meet the assumptions of random sampling and independent observations, as participants were drawn from the existing YouGov online panel using a stratified sampling technique. Despite this, the Chi-square test is still selected as both variables tested are nominal categorical variables whose values are mutually exclusive and the test is robust enough to handle the not fully random sample data. Given that the violations are minimal and the sample size is sufficiently large (1,115 observations), the results may have limited generalizability to the broader population.
+
+**2. How would you rate college professors?**
+
+-   **Null Hypothesis (H~0~)**: There is no difference between Democrats and Republicans in their feelings toward college professors.
+-   **Alternative Hypothesis (H**~a~**)**: Republicans rate college professors less favorably than Democrats.
+
+The above question was asked to gauge the respondent's sentiment towards college professors.
+
+If a key difference in a political party's ideology is curriculum, expanding that further to subject matter presents an opportunity to understand where that curriculum may differ on the scale of primary or secondary education. While both primary and secondary educational institutions require teachers, the topics that they teach and the methods used are very different. Primary education generally has a set curriculum between school districts and states.
+
+This differs from secondary institutions, where colleges may have subject matter focuses, and there isn't a standardized test to measure a professor's performance or impact on a student's education. Because the responses don't account for the unique experience of curriculum at different educational levels, we're making the assumption that the secondary educational experience between Democrats and Republicans has these similarities.
+
+```{r load packages, echo=FALSE, message=FALSE}
+library(dplyr) 
+library(magrittr) 
+library(knitr) 
+```
+
+```{r set options, include=FALSE}
+theme_set(theme_bw()) 
+knitr::opts_chunk$set(echo=FALSE, message=FALSE)
+```
+
+```{r, warning=FALSE, echo=FALSE, fig.width = 5, fig.height=3}
+ds <- read.csv("~/lab-1-team-no-l-s/data/modelling/democrats_republican_cmbnd.csv")
+
+ds$party_group <- factor(ds$party_group, 
+                         levels = 
+                           c("Democrat", 
+                             "Republican"))
+
+# Remove respondents with "not asked" as choice; 145/942 = ~15%
+ds_filtered <- ds %>%
+  filter(!is.na(group_colprofs) & tolower(trimws(group_colprofs)) != "not asked")  
+
+# Ensure group_colprofs is numeric (as a thermometer variable)
+ds_filtered$group_colprofs <- as.numeric(ds_filtered$group_colprofs)
+
+# Create a new variable that groups group_colprofs into intervals of 10 for even grouping on X axis
+ds_filtered$group_colprofs_binned <- cut(ds_filtered$group_colprofs, breaks = seq(0, 100, by = 10), include.lowest = TRUE, right = FALSE)
+
+# Remove "NA" from X Axis as thermometer option
+ds_filtered <- ds_filtered %>%
+  filter(!is.na(group_colprofs_binned)) 
+
+# Calculate party percent of totals per bin for each party_group and group_colprofs_binned
+ds_summary <- ds_filtered %>%
+  filter(party_group %in% c("Democrat", "Republican")) %>%
+  group_by(group_colprofs_binned, party_group) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(group_colprofs_binned) %>%
+  mutate(proportion = count / sum(count))  # Calculate
+
+# Create line chart; party_group as a binary pid7 proxy (Dem/Repub), group_col_profs binned in icnr. of 10 for thermometer score
+ggplot(ds_summary, aes(x = group_colprofs_binned, y = proportion, color = party_group, group = party_group)) + 
+  geom_line(size = 1) +  # Creating lines
+  geom_point(size = 2) +  # Giving some points/nodes
+  ggtitle("Percent of Party Group Respondents \n(Aggreg. Therm Scores 0-99)") + 
+  xlab("Group ColProfs (Aggreg in Therm Scores - Increment by 10)") + 
+  ylab("Percent of Party Group Respondents") + 
+  scale_color_manual(values = c("blue", "red")) +  
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+# Rotating X axis so the graph doesn't have to be as wide to show values
+```
+
+There is a noticeable trend of Democrats giving fewer low scores than Republicans, and Republicans giving fewer high scores than Democrats. Using a T-test did show statistical significance, but a check to make sure the data was normally distributed with a histogram revealed democrats responses skewing towards the right, and Republicans towards the left. For this reason, we're using the Wilcoxon test which is less affected by outliers and skewed data by not requiring normality, using the median instead of the two means. Having 30+ observations per group increases our confidence in the results of this test, and the Wilcoxon test will compare the median of Democratic and Republican voters' ratings of college professors given the numerical and continuous answers.
+
+## Results
+
+**1. Which Political Party Would Best Handle Public Schooling?**
+
+```{r}
+# Perform the Chi-square test of independence
+chisq_test <- chisq.test(filtered_table)
+
+# Output the results
+print(chisq_test)
+```
+
+**Conclusion:** Since our p-value is less than 0.05, we reject the null hypothesis. This indicates a significant association between political identity (Democrat vs. Republican respondents) and the preference for which party would better handle public schooling. In other words, political affiliation strongly influences individuals' opinions, with a clear trend of partisan loyalty and limited cross-party preference.
+
+**2. How would you rate college professors? (0-99 range; 0-50 as "don't feel favorable", 50-99 as "feel favorable and warm")**
+
+```{r, Warning=FALSE, echo=FALSE}
+
+# Confirm that 'group_colprofs' is only numbers
+ds_filtered$group_colprofs <- as.numeric(ds_filtered$group_colprofs) 
+
+# Confirm that the dataset only includes Democrats and Republicans 
+ds_filtered <- ds_filtered %>% filter(party_group %in% c("Democrat", "Republican")) 
+
+# Remove any rows with NA values in 'group_colprofs' 
+ds_filtered <- ds_filtered %>% filter(!is.na(group_colprofs)) 
+
+# Hypothesis test
+test <- wilcox.test(group_colprofs ~ party_group, data = ds_filtered)
+print(test)
+```
+
+**Conclusion:** Our p-value is quite small and less than 0.05, indicating that the difference in means between Democrats and Republicans is statistically significant. As a result, we can reject the null hypothesis that there is no difference between the two groups in how they'd rate college professors.
+
+Confirming what we see in the line chart, there is strong evidence that Republicans and Democrats have differing opinions towards college professors. The alternative hypothesis that "Republicans rate college professors less favorably than Democrats" stands.
+
+## Discussion
+
+This study found strong evidence that Democratic and Republican voters have different views on primary and secondary schooling. This was supported by the hypotheses tests on two key ANES survey questions: (1) "Which political party would best handle public schooling?" and (2) "How would you rate college professors?". It provided statistically significant evidence that partisan loyalty significantly shapes an individual's opinions on which party would better handle public schooling and the overall opinion of college professors.
+
+The practical significance of these findings is that difference in views on education can have great impact on formulation of education policies affecting students, teachers and society. If political parties have opposing perspectives on issues like curricula, school funding, or teacher evaluations, it can lead to shifts in education policies depending on which party is in power. These changes can impact the quality of education students receive, the working conditions and resources available to teachers and consequently how the society as a whole will view the purpose and importance of education in the future.
+
+These results may be of particular interest to educators, and policymakers. Educators and policymakers might consider how to foster greater trust and understanding across people who believe in different political ideologies, particularly in areas like education that are important for the progress of society.
